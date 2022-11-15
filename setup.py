@@ -44,7 +44,7 @@ with open(README_PATH, "r", encoding="utf-8") as readme_file:
     )
 
 setuptools.setup(
-    name="qiskit-nature",
+    name="qiskit-nature-kvantify",
     version=VERSION,
     description="Qiskit Nature: A library of quantum computing chemistry/physics experiments",
     long_description=README,
@@ -69,7 +69,7 @@ setuptools.setup(
         "Topic :: Scientific/Engineering",
     ],
     keywords="qiskit sdk quantum nature chemistry physics",
-    packages=setuptools.find_packages(include=["qiskit_nature", "qiskit_nature.*"]),
+    packages=setuptools.find_packages(include=["qiskit_nature_kvantify", "qiskit_nature_kvantify.*"]),
     install_requires=REQUIREMENTS,
     include_package_data=True,
     python_requires=">=3.7",
