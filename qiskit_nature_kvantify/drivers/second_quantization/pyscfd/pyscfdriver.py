@@ -47,6 +47,7 @@ from ....exceptions import QiskitNatureError
 from ..electronic_structure_driver import ElectronicStructureDriver, MethodType
 from ...molecule import Molecule
 from ...units_type import UnitsType
+from ....properties.second_quantization.electronic.integrals import IntegralProperty, ElectronicIntegrals
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,36 @@ class InitialGuess(Enum):
     ONE_E = "1e"
     ATOM = "atom"
 
+
+class ElectronicGradient(IntegralProperty):
+    """The ElectronicGradient property.
+
+    This contains the dipole moment along a single Cartesian axis.
+    """
+
+    def __init__(
+        self,
+        axis: str,
+        electronic_integrals: list[ElectronicIntegrals],
+        shift: Optional[dict[str, complex]] = None,
+    ) -> None:
+        """
+        Args:
+            axis: the name of the Cartesian axis.
+            dipole: an IntegralProperty property representing the dipole moment operator.
+            shift: an optional dictionary of dipole moment shifts.
+        """
+        self._axis = axis
+        name = self.__class__.__name__ + axis.upper()
+        super().__init__(name, electronic_integrals, shift=shift)
+        warn_deprecated(
+            "0.5.0",
+            old_type=DeprecatedType.CLASS,
+            old_name="qiskit_nature.properties.second_quantization.electronic.DipoleMoment",
+            new_type=DeprecatedType.CLASS,
+            new_name="qiskit_nature.second_q.properties.DipoleMoment",
+            category=NatureDeprecationWarning,
+        )
 
 @_optionals.HAS_PYSCF.require_in_instance
 class PySCFDriver(ElectronicStructureDriver):
@@ -611,6 +642,43 @@ class PySCFDriver(ElectronicStructureDriver):
             )
         )
 
+    def _populate_driver_result_gradient(self, driver_result: ElectronicStructureDriverResult):
+        basis_transform = driver_result.get_property(ElectronicBasisTransform)
+
+        self._mol.set_common_orig((0, 0, 0))
+        ao_dip = self._mol.intor_symmetric("int1e_r", comp=3)
+
+        d_m = self._calc.make_rdm1(self._calc.mo_coeff, self._calc.mo_occ)
+
+        if not (isinstance(d_m, np.ndarray) and d_m.ndim == 2):
+            d_m = d_m[0] + d_m[1]
+
+        elec_dip = np.negative(np.einsum("xij,ji->x", ao_dip, d_m).real)
+        elec_dip = np.round(elec_dip, decimals=8)
+        nucl_dip = np.einsum("i,ix->x", self._mol.atom_charges(), self._mol.atom_coords())
+        nucl_dip = np.round(nucl_dip, decimals=8)
+
+        logger.info("HF Electronic dipole moment: %s", elec_dip)
+        logger.info("Nuclear dipole moment: %s", nucl_dip)
+        logger.info("Total dipole moment: %s", nucl_dip + elec_dip)
+
+        x_dip_ints = OneBodyElectronicIntegrals(ElectronicBasis.AO, (ao_dip[0], None))
+        y_dip_ints = OneBodyElectronicIntegrals(ElectronicBasis.AO, (ao_dip[1], None))
+        z_dip_ints = OneBodyElectronicIntegrals(ElectronicBasis.AO, (ao_dip[2], None))
+
+        x_dipole = DipoleMoment("x", [x_dip_ints, x_dip_ints.transform_basis(basis_transform)])
+        y_dipole = DipoleMoment("y", [y_dip_ints, y_dip_ints.transform_basis(basis_transform)])
+        z_dipole = DipoleMoment("z", [z_dip_ints, z_dip_ints.transform_basis(basis_transform)])
+
+        driver_result.add_property(
+            ElectronicGradient(
+                [x_dipole, y_dipole, z_dipole],
+                nuclear_dipole_moment=nucl_dip,
+                reverse_dipole_sign=True,
+            )
+        )
+        return None
+
     def _populate_driver_result_electronic_energy(
         self, driver_result: ElectronicStructureDriverResult
     ) -> None:
@@ -672,10 +740,6 @@ class PySCFDriver(ElectronicStructureDriver):
         elec_dip = np.round(elec_dip, decimals=8)
         nucl_dip = np.einsum("i,ix->x", self._mol.atom_charges(), self._mol.atom_coords())
         nucl_dip = np.round(nucl_dip, decimals=8)
-
-        logger.info("HF Electronic dipole moment: %s", elec_dip)
-        logger.info("Nuclear dipole moment: %s", nucl_dip)
-        logger.info("Total dipole moment: %s", nucl_dip + elec_dip)
 
         x_dip_ints = OneBodyElectronicIntegrals(ElectronicBasis.AO, (ao_dip[0], None))
         y_dip_ints = OneBodyElectronicIntegrals(ElectronicBasis.AO, (ao_dip[1], None))

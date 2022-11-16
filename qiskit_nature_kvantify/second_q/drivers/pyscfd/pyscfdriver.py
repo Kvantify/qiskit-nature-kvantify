@@ -29,7 +29,7 @@ from qiskit_nature.units import DistanceUnit
 from qiskit_nature.exceptions import QiskitNatureError
 from qiskit_nature.second_q.formats.molecule_info import MoleculeInfo
 from qiskit_nature.second_q.formats.qcschema import QCSchema
-from qiskit_nature.second_q.formats.qcschema_translator import qcschema_to_problem
+from qiskit_nature_kvantify.second_q.formats.qcschema_translator import qcschema_to_problem
 from qiskit_nature.second_q.problems import ElectronicBasis, ElectronicStructureProblem
 from qiskit_nature.settings import settings
 import qiskit_nature.optionals as _optionals
