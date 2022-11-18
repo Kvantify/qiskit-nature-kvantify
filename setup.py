@@ -29,7 +29,7 @@ if not hasattr(setuptools, "find_namespace_packages") or not inspect.ismethod(
     )
     sys.exit(1)
 
-VERSION_PATH = os.path.join(os.path.dirname(__file__), "qiskit_nature", "VERSION.txt")
+VERSION_PATH = os.path.join(os.path.dirname(__file__), "qiskit_nature_kvantify", "VERSION.txt")
 with open(VERSION_PATH, "r", encoding="utf-8") as version_file:
     VERSION = version_file.read().strip()
 
